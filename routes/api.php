@@ -15,7 +15,8 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::get('/getcve', [DataController::class, 'index']);
+Route::get('/getcvelist', [DataController::class, 'getCveList']);
+Route::get('/getcvedetails', [DataController::class, 'getCveDetails']);
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();

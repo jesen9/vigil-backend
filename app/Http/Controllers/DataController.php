@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Env;
 use Illuminate\Support\Facades\Http;
 
 class DataController extends Controller
@@ -14,8 +15,14 @@ class DataController extends Controller
      */
     public function index(Request $request)
     {
-//        dd($request->query->all()); // loop ini aja
-//        dd(count($request->query));
+//        $cve_details = $this->getCveDetails($request);
+//        dd($cve_details, $cve_details->json());
+//        return Http::get('https://dog.ceo/api/breeds/list/random/5')['message'];
+//        dd($breeds);
+        //return view('index',compact('breeds'));
+    }
+
+    public function getCveList(Request $request) {
         /*
         $cpename = $request->query("cpeName");
         $cveId = $request->query("cveId");
@@ -36,27 +43,58 @@ class DataController extends Controller
         $sourceIdentifier = $request->query("sourceIdentifier");
         */
 
-//        lastModStartDate & lastModEndDate
-//        pubStartDate & pubEndDate
-//        versionEnd & versionEndType
-//        versionStart & versionStartType
+        //        lastModStartDate & lastModEndDate
+        //        pubStartDate & pubEndDate
+        //        versionEnd & versionEndType
+        //        versionStart & versionStartType
 
-        $baseurl = "https://services.nvd.nist.gov/rest/json/cves/2.0";
-        $counter = 0;
+        $results_per_page = $request->query->all()['resultsPerPage'] ?? false;
+        $start_index = $request->query->all()['startIndex'] ?? false;
 
-        foreach($request->query->all() as $param => $value)
-        {
-//            if($counter++ == 0) continue;
-            $baseurl .= ($counter++ == 0 ? "?" : "&") . $param . "=" . $value;
+        if (!$results_per_page || !$start_index) {
+            return abort(response()->json([
+                'message' => 'Pagination params not specified'
+            ], 400));
         }
 
-//        dd($baseurl);
-        dd(Http::get($baseurl));
+        $query_string = parse_url($request->getRequestUri())['query'] ?? '';
+        $request_url = "https://services.nvd.nist.gov/rest/json/cves/2.0?".$query_string;
 
-//        return Http::get('https://dog.ceo/api/breeds/list/random/5')['message'];
-        return Http::get($baseurl);
-//        dd($breeds);
-        //return view('index',compact('breeds'));
+        /*foreach($request->query->all() as $param => $value)
+        {
+            $baseurl .= ($counter++ == 0 ? "?" : "&") . $param . "=" . $value;
+        }*/
+
+        return Http::get($request_url);
+    }
+
+    public function getCveDetails(Request $request) {
+        $cve_id = $request->query->all()['cveId'] ?? false;
+        if (!$cve_id) {
+            return abort(response()->json([
+                'message' => 'CVE ID not provided'
+            ], 400));
+        }
+        $request_url = "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=".$cve_id;
+        $cve_details = Http::get($request_url)->json();
+        $cve_poc = $this->getPoc($cve_id)->json();
+        dd($cve_details, $cve_poc); // json udh diubah jadi array, tinggal atur
+
+    }
+
+    public function getPoc($cve_id) {
+        $api_key = Env::get('GOOGLE_API_KEY');
+        $search_engine_id = Env::get('SEARCH_ENGINE_ID');
+        $search_query = 'intitle:"'.$cve_id.'" poc';
+
+        return Http::get('https://www.googleapis.com/customsearch/v1', [
+            'q' => $search_query,
+            'key' => $api_key,
+            'cx' => $search_engine_id,
+            'exactTerms' => $cve_id,
+            'num' => 3,
+        ]);
+
     }
 
     /**
@@ -87,40 +125,6 @@ class DataController extends Controller
      * @return \Illuminate\Http\Response
      */
     public function show($id)
-    {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function edit($id)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function update(Request $request, $id)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function destroy($id)
     {
         //
     }

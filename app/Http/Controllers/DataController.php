@@ -50,8 +50,11 @@ class DataController extends Controller
 
         $results_per_page = $request->query->all()['resultsPerPage'] ?? false;
         $start_index = $request->query->all()['startIndex'] ?? false;
+//        must add other params
 
-        if (!$results_per_page || !$start_index) {
+//        dd($results_per_page, $start_index, 0 == false);
+
+        if (!$results_per_page || $start_index === false) {
             return abort(response()->json([
                 'message' => 'Pagination params not specified'
             ], 400));
@@ -60,12 +63,41 @@ class DataController extends Controller
         $query_string = parse_url($request->getRequestUri())['query'] ?? '';
         $request_url = "https://services.nvd.nist.gov/rest/json/cves/2.0?".$query_string;
 
-        /*foreach($request->query->all() as $param => $value)
-        {
-            $baseurl .= ($counter++ == 0 ? "?" : "&") . $param . "=" . $value;
-        }*/
+        $response = Http::get($request_url)->json();
+        $cve_list = collect($response['vulnerabilities'])->map(function($i){
+            return $i['cve'];
+        })->map(function($i){
+            $cve = [];
+            $cve['cveid'] = $i['id'];
+            $cve['description'] = collect($i['descriptions'])->filter(function($j){
+                return $j['lang'] == 'en';
+            })->first()['value'];
+            $pub_date = new \DateTime($i['published']);
+            $cve['publishedat'] = $pub_date->format('d-m-Y');
+            $upd_date = new \DateTime($i['lastModified']);
+            $cve['updatedat'] = $upd_date->format('d-m-Y');
+            $cve['cvssscore'] = collect($i['metrics'])->collapse()->map(function($j){
+                $cvss = $j['cvssData'];
+                $cvss['source'] = $j['source'];
+                $cvss['type'] = $j['type'];
+                $cvss['exploitabilityScore'] = $j['exploitabilityScore'];
+                $cvss['impactScore'] = $j['impactScore'];
+                return $cvss;
+            })->max('baseScore');
+//            dd('ini first cve', $cve);
+            return $cve;
+        })->all();
+//        ->all() ubah jadi array
+        return response()->json($cve_list);
 
-        return Http::get($request_url);
+        /*{
+            cveid:'CVE-2014-9174',
+            description:'Cross-site scripting (XSS) vulnerability in the Google Analytics by Yoast (google-analytics-for-wordpress) plugin before 5.1.3 for WordPress allows remote attackers to inject arbitrary web script or HTML via the "Manually enter your UA code" (manual_ua_code_field) field in the General Settings.',
+            cweid:'CWE-79',
+            publishedat:' 2014-12-02 16:59:11',
+            updatedat:'2017-09-08 01:29:33',
+            cvssscore:'MEDIUM',
+        }*/
     }
 
     public function getCveDetails(Request $request) {
@@ -78,8 +110,11 @@ class DataController extends Controller
         $request_url = "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=".$cve_id;
         $cve_details = Http::get($request_url)->json();
         $cve_poc = $this->getPoc($cve_id)->json();
-        dd($cve_details, $cve_poc); // json udh diubah jadi array, tinggal atur
+//        dd($cve_details, $cve_poc, [$cve_details, $cve_poc]); // json udh diubah jadi array, tinggal atur
 
+
+
+        return response()->json($cve_details);
     }
 
     public function getPoc($cve_id) {

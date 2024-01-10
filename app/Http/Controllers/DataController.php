@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Env;
 use Illuminate\Support\Facades\Http;
+use function PHPUnit\Framework\isEmpty;
 
 class DataController extends Controller
 {
@@ -109,12 +110,59 @@ class DataController extends Controller
         }
         $request_url = "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=".$cve_id;
         $cve_details = Http::get($request_url)->json();
-        $cve_poc = $this->getPoc($cve_id)->json();
 //        dd($cve_details, $cve_poc, [$cve_details, $cve_poc]); // json udh diubah jadi array, tinggal atur
 
+        // harus pasang validasi, cve bisa jadi invalid jadi keluar vulnerabilities = []
+        $cve = [];
 
+        if(isset($cve_details['vulnerabilities'][0]['cve'])) {
+            $cve_details = $cve_details['vulnerabilities'][0]['cve'];
+            $cve['cveid'] = $cve_details['id'];
+            $cve['description'] = collect($cve_details['descriptions'])->filter(function ($j) {
+                return $j['lang'] == 'en';
+            })->first()['value'];
+            $pub_date = new \DateTime($cve_details['published']);
+            $cve['publishedat'] = $pub_date->format('d-m-Y');
+            $upd_date = new \DateTime($cve_details['lastModified']);
+            $cve['updatedat'] = $upd_date->format('d-m-Y');
+            $cve['cvssscore'] = collect($cve_details['metrics'])->collapse()->map(function ($j) {
+//                cvss yg kepake:
+//                {version}
+//                {vectorString}
+//                {baseScore}
+//                {baseSeverity}
+                $cvss = $j['cvssData'];
+                $cvss['source'] = $j['source'];
+                $cvss['type'] = $j['type'];
+                $cvss['exploitabilityScore'] = $j['exploitabilityScore'];
+                $cvss['impactScore'] = $j['impactScore'];
+                return $cvss;
+            })->all();
 
-        return response()->json($cve_details);
+            $cve['cwe'] = collect($cve_details['weaknesses'])->map(function($j){
+                $cwe = [];
+                $cwe['cweid'] = collect($j['description'])->filter(function($j){
+                    return $j['lang'] == 'en';
+                })->first()['value'];
+                $cwe['source'] = $j['source'];
+                $cwe['type'] = $j['type'];
+                return $cwe;
+            })->all();
+
+            $cve['poc'] = $this->getPoc($cve_id)->json()['items'] ?? [];
+            if($cve['poc'] !== []){
+                $cve['poc'] = collect($cve['poc'])->map(function($i){
+                    $poc = [];
+                    $poc['title'] = $i['title'];
+                    $poc['description'] = $i['snippet'];
+                    $poc['link'] = $i['link'];
+                    return $poc;
+                });
+//                dd($cve['poc']);
+            }
+        }
+
+        return response()->json($cve);
     }
 
     public function getPoc($cve_id) {
@@ -127,8 +175,12 @@ class DataController extends Controller
             'key' => $api_key,
             'cx' => $search_engine_id,
             'exactTerms' => $cve_id,
-            'num' => 3,
+            'num' => 5,
         ]);
+
+    }
+
+    public function getCpeDetails($cpe_uuid) {
 
     }
 

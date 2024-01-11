@@ -53,8 +53,6 @@ class DataController extends Controller
         $start_index = $request->query->all()['startIndex'] ?? false;
 //        must add other params
 
-//        dd($results_per_page, $start_index, 0 == false);
-
         if (!$results_per_page || $start_index === false) {
             return abort(response()->json([
                 'message' => 'Pagination params not specified'
@@ -85,20 +83,10 @@ class DataController extends Controller
                 $cvss['impactScore'] = $j['impactScore'];
                 return $cvss;
             })->max('baseScore');
-//            dd('ini first cve', $cve);
             return $cve;
         })->all();
 //        ->all() ubah jadi array
         return response()->json($cve_list);
-
-        /*{
-            cveid:'CVE-2014-9174',
-            description:'Cross-site scripting (XSS) vulnerability in the Google Analytics by Yoast (google-analytics-for-wordpress) plugin before 5.1.3 for WordPress allows remote attackers to inject arbitrary web script or HTML via the "Manually enter your UA code" (manual_ua_code_field) field in the General Settings.',
-            cweid:'CWE-79',
-            publishedat:' 2014-12-02 16:59:11',
-            updatedat:'2017-09-08 01:29:33',
-            cvssscore:'MEDIUM',
-        }*/
     }
 
     public function getCveDetails(Request $request) {
@@ -158,8 +146,15 @@ class DataController extends Controller
                     $poc['link'] = $i['link'];
                     return $poc;
                 });
-//                dd($cve['poc']);
             }
+
+            $cve['cpe'] = collect($cve_details['configurations'])->map(function($i){
+                return collect($i['nodes'])->map(function($j){
+                    return $j['cpeMatch'];
+                })->flatten(1);
+            })->flatten(1)
+                ->unique('matchCriteriaId')
+                ->all();
         }
 
         return response()->json($cve);

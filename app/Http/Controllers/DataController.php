@@ -85,8 +85,13 @@ class DataController extends Controller
             })->max('baseScore');
             return $cve;
         })->all();
-//        ->all() ubah jadi array
-        return response()->json($cve_list);
+
+        return response()->json([
+            'resultsPerPage' => $response['resultsPerPage'],
+            'startIndex' => $response['startIndex'],
+            'totalResults' => $response['totalResults'],
+            'cvelist' => $cve_list
+        ]);
     }
 
     public function getCveDetails(Request $request) {

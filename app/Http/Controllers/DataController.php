@@ -9,20 +9,6 @@ use function PHPUnit\Framework\isEmpty;
 
 class DataController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function index(Request $request)
-    {
-//        $cve_details = $this->getCveDetails($request);
-//        dd($cve_details, $cve_details->json());
-//        return Http::get('https://dog.ceo/api/breeds/list/random/5')['message'];
-//        dd($breeds);
-        //return view('index',compact('breeds'));
-    }
-
     public function getCveList(Request $request) {
         /*
         $cpename = $request->query("cpeName");
@@ -80,8 +66,6 @@ class DataController extends Controller
         $last_start_index = $required_pages * $results_per_page - $results_per_page;
         $actual_page_index = $last_start_index - $start_index;
         $request_url = preg_replace($start_index_pattern, "startIndex=".$actual_page_index, $request_url);
-
-//        dd($total_results_request, $total_pages_response, $total_results, $required_pages, $last_start_index, $actual_page_index, $request_url);
 
         $response = Http::get($request_url)->json();
 
@@ -206,37 +190,5 @@ class DataController extends Controller
 
     public function getCpeDetails($cpe_uuid) {
 
-    }
-
-    /**
-     * Show the form for creating a new resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function create()
-    {
-        //
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
-     */
-    public function store(Request $request)
-    {
-        //
-    }
-
-    /**
-     * Display the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function show($id)
-    {
-        //
     }
 }

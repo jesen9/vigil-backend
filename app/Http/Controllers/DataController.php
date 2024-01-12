@@ -62,7 +62,29 @@ class DataController extends Controller
         $query_string = parse_url($request->getRequestUri())['query'] ?? '';
         $request_url = "https://services.nvd.nist.gov/rest/json/cves/2.0?".$query_string;
 
+//         PAGINATION LOGIC TO SORT BY NEWEST
+        // get total pages (replace rpp and si to minimum value to reduce traffic
+
+        // set replace pattern for rpp and si
+        $results_per_page_pattern = '/resultsPerPage=[0-9]+/';
+        $start_index_pattern = '/startIndex=[0-9]+/';
+        // replace rpp and si in request_url
+        $total_results_request = preg_replace($results_per_page_pattern, "resultsPerPage=1", $request_url);
+        $total_results_request = preg_replace($start_index_pattern, "startIndex=0", $total_results_request);
+        // request total pages
+        $total_pages_response = Http::get($total_results_request)->json();
+        $total_results = $total_pages_response['totalResults'] ?? "0";
+
+        //calculate pages and indices
+        $required_pages = max(ceil($total_results/$results_per_page),1);    // minimum required page is 1
+        $last_start_index = $required_pages * $results_per_page - $results_per_page;
+        $actual_page_index = $last_start_index - $start_index;
+        $request_url = preg_replace($start_index_pattern, "startIndex=".$actual_page_index, $request_url);
+
+//        dd($total_results_request, $total_pages_response, $total_results, $required_pages, $last_start_index, $actual_page_index, $request_url);
+
         $response = Http::get($request_url)->json();
+
         $cve_list = collect($response['vulnerabilities'])->map(function($i){
             return $i['cve'];
         })->map(function($i){
@@ -84,12 +106,14 @@ class DataController extends Controller
                 return $cvss;
             })->max('baseScore');
             return $cve;
-        })->all();
+        })->sortByDesc('publishedat')
+        ->values()
+        ->all();
 
         return response()->json([
-            'resultsPerPage' => $response['resultsPerPage'],
-            'startIndex' => $response['startIndex'],
-            'totalResults' => $response['totalResults'],
+            'resultsPerPage' => $results_per_page,
+            'startIndex' => $start_index,
+            'totalResults' => $total_results,
             'cvelist' => $cve_list
         ]);
     }

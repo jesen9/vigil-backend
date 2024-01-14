@@ -50,7 +50,6 @@ class DataController extends Controller
 
 //         PAGINATION LOGIC TO SORT BY NEWEST
         // get total pages (replace rpp and si to minimum value to reduce traffic
-
         // set replace pattern for rpp and si
         $results_per_page_pattern = '/resultsPerPage=[0-9]+/';
         $start_index_pattern = '/startIndex=[0-9]+/';
@@ -58,16 +57,31 @@ class DataController extends Controller
         $total_results_request = preg_replace($results_per_page_pattern, "resultsPerPage=1", $request_url);
         $total_results_request = preg_replace($start_index_pattern, "startIndex=0", $total_results_request);
         // request total pages
-        $total_pages_response = Http::get($total_results_request)->json();
-        $total_results = $total_pages_response['totalResults'] ?? "0";
+        $total_results_response = Http::get($total_results_request)->json();
+
+        if(!$total_results_response){
+            return abort(response()->json([
+                'message' => 'No response from NVD API!'
+            ], 500));
+        }
+
+        $total_results = $total_results_response['totalResults'];
 
         //calculate pages and indices
-        $required_pages = max(ceil($total_results/$results_per_page),1);    // minimum required page is 1
-        $last_start_index = $required_pages * $results_per_page - $results_per_page;
-        $actual_page_index = $last_start_index - $start_index;
-        $request_url = preg_replace($start_index_pattern, "startIndex=".$actual_page_index, $request_url);
+        $page_number = ($start_index/$results_per_page) + 1;
+        $request_start_index =  max($total_results - $page_number * $results_per_page, 0);
+        // Modify number of results in last page
+        if($request_start_index === 0) $results_per_page = $total_results%$results_per_page;
+        $request_url = preg_replace($results_per_page_pattern, "resultsPerPage=".$results_per_page, $request_url);
+        $request_url = preg_replace($start_index_pattern, "startIndex=".$request_start_index, $request_url);
 
         $response = Http::get($request_url)->json();
+
+        if(!$response){
+            return abort(response()->json([
+                'message' => 'No response from NVD API!'
+            ], 500));
+        }
 
         $cve_list = collect($response['vulnerabilities'])->map(function($i){
             return $i['cve'];
@@ -185,6 +199,10 @@ class DataController extends Controller
             'exactTerms' => $cve_id,
             'num' => 5,
         ]);
+
+    }
+
+    public function getCweDetails() {
 
     }
 

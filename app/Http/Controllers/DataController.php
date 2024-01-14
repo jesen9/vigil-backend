@@ -104,7 +104,9 @@ class DataController extends Controller
                 return $cvss;
             })->max('baseScore');
             return $cve;
-        })->sortByDesc('publishedat')
+        })->sortByDesc(function($i){
+            return strtotime($i['publishedat']);
+        })
         ->values()
         ->all();
 

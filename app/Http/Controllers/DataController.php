@@ -49,7 +49,7 @@ class DataController extends Controller
         }
 
         $query_string = parse_url($request->getRequestUri())['query'] ?? '';
-        $request_url = "https://services.nvd.nist.gov/rest/json/cves/2.0?".$query_string;
+        $request_url = Env::get('NVD_API_URL')."?".$query_string;
 
 //         PAGINATION LOGIC TO SORT BY NEWEST
         // get total pages (replace rpp and si to minimum value to reduce traffic
@@ -128,7 +128,7 @@ class DataController extends Controller
                 'message' => 'CVE ID not provided'
             ], 400));
         }
-        $request_url = "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=".$cve_id;
+        $request_url = Env::get('NVD_API_URL')."?cveId=".$cve_id;
         $cve_details = Http::get($request_url)->json();
 
         $cve = [];
@@ -190,13 +190,24 @@ class DataController extends Controller
         $search_engine_id = Env::get('SEARCH_ENGINE_ID');
         $search_query = 'intitle:"'.$cve_id.'" poc';
 
-        return Http::get('https://www.googleapis.com/customsearch/v1', [
+        return Http::get(Env::get('GOOGLE_API_URL'), [
             'q' => $search_query,
             'key' => $api_key,
             'cx' => $search_engine_id,
             'exactTerms' => $cve_id,
             'num' => 5,
         ]);
+
+        // MUST BE STORED IN DATABASE
+//        1. LOOK FOR DATA IN DATABASE
+//        2. IF EMPTY, USER CAN UPDATE DATABASE WITH SCRIPT (IN BACKEND)
+//          script must crawl every cve to ever exist (avoid)
+//        instead,
+//          first check if db is empty,
+//          then fire API and insert to DB,
+//          then pull DB data
+        // script crawling nya pake gak ya? oh untuk CWE aja kali
+//            pake script CWE yg pny gab, adapt to laravel
 
     }
 

@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Cwe;
+use Database\Seeders\DatabaseSeeder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Env;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use function PHPUnit\Framework\isEmpty;
 
@@ -127,9 +130,7 @@ class DataController extends Controller
         }
         $request_url = "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=".$cve_id;
         $cve_details = Http::get($request_url)->json();
-//        dd($cve_details, $cve_poc, [$cve_details, $cve_poc]); // json udh diubah jadi array, tinggal atur
 
-        // harus pasang validasi, cve bisa jadi invalid jadi keluar vulnerabilities = []
         $cve = [];
 
         if(isset($cve_details['vulnerabilities'][0]['cve'])) {
@@ -143,11 +144,6 @@ class DataController extends Controller
             $upd_date = new \DateTime($cve_details['lastModified']);
             $cve['updatedat'] = $upd_date->format('d-m-Y');
             $cve['cvssscore'] = collect($cve_details['metrics'])->collapse()->map(function ($j) {
-//                cvss yg kepake:
-//                {version}
-//                {vectorString}
-//                {baseScore}
-//                {baseSeverity}
                 $cvss = $j['cvssData'];
                 $cvss['source'] = $j['source'];
                 $cvss['type'] = $j['type'];
@@ -210,5 +206,44 @@ class DataController extends Controller
 
     public function getCpeDetails($cpe_uuid) {
 
+    }
+
+    public function updateDatabase() {
+        # CWE Database
+        $page = 1;
+        $cwe_data = [];
+
+        // loop all CWE data in Opencve
+        while(true) {
+            set_time_limit(100);
+            $response = HTTP::withBasicAuth(Env::get('OPENCVE_USERNAME'), Env::get('OPENCVE_PASSWORD'))
+            ->get(Env::get('OPENCVE_CWE_API_URL'), [
+                'page' => $page
+            ]);
+
+            if ($response->status() !== 200) break;
+
+            $cwe_data = array_merge($cwe_data, $response->json());
+            $page++;
+        }
+
+        if($cwe_data === []) return abort(response()->json([
+            'message' => 'Failed to retrieve CWE data. Database is unchanged.'
+        ], $response->status()));
+
+        // Truncate (delete all entries from cwe table)
+        Cwe::truncate();
+
+        foreach($cwe_data as $cwe_entry){
+            $cwe = new Cwe();
+            $cwe->id = $cwe_entry['id'];
+            $cwe->name = $cwe_entry['name'];
+            $cwe->description = $cwe_entry['description'];
+            $cwe->save();
+        }
+
+        return response()->json([
+            'message' => 'Database Updated.'
+        ]);
     }
 }

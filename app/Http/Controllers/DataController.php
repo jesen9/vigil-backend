@@ -40,13 +40,15 @@ class DataController extends Controller
 
         $results_per_page = $request->query->all()['resultsPerPage'] ?? false;
         $start_index = $request->query->all()['startIndex'] ?? false;
-//        must add other params
 
         if (!$results_per_page || $start_index === false) {
             return abort(response()->json([
                 'message' => 'Pagination params not specified'
             ], 400));
         }
+
+        $results_per_page = filter_var($results_per_page, FILTER_SANITIZE_NUMBER_INT);
+        $start_index = filter_var($start_index, FILTER_SANITIZE_NUMBER_INT);
 
         $query_string = parse_url($request->getRequestUri())['query'] ?? '';
         $request_url = Env::get('NVD_API_URL')."?".$query_string;

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cwe;
+use App\Models\Poc;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Env;
@@ -12,7 +13,8 @@ use function PHPUnit\Framework\isEmpty;
 
 class DataController extends Controller
 {
-    public function getCveList(Request $request) {
+    public function getCveList(Request $request): \Illuminate\Http\JsonResponse
+    {
         /*
         $cpename = $request->query("cpeName");
         $cveId = $request->query("cveId");
@@ -53,7 +55,7 @@ class DataController extends Controller
         $query_string = parse_url($request->getRequestUri())['query'] ?? '';
         $request_url = Env::get('NVD_API_URL')."?".$query_string;
 
-//         PAGINATION LOGIC TO SORT BY NEWEST
+        # PAGINATION LOGIC TO SORT BY NEWEST
         // get total pages (replace rpp and si to minimum value to reduce traffic
         // set replace pattern for rpp and si
         $results_per_page_pattern = '/resultsPerPage=[0-9]+/';
@@ -123,7 +125,8 @@ class DataController extends Controller
         ]);
     }
 
-    public function getCveDetails(Request $request) {
+    public function getCveDetails(Request $request): \Illuminate\Http\JsonResponse
+    {
         $cve_id = $request->query->all()['cveId'] ?? false;
         if (!$cve_id) {
             return abort(response()->json([
@@ -159,21 +162,14 @@ class DataController extends Controller
                 $cwe['cweid'] = collect($j['description'])->filter(function($j){
                     return $j['lang'] == 'en';
                 })->first()['value'];
+                $cwe['name'] = Cwe::select('name')->where('id', $cwe['cweid'])->first()->toArray()['name'] ?? '';
+                $cwe['description'] = Cwe::select('description')->where('id', $cwe['cweid'])->first()->toArray()['description'] ?? '';
                 $cwe['source'] = $j['source'];
                 $cwe['type'] = $j['type'];
                 return $cwe;
             })->all();
 
-            $cve['poc'] = $this->getPoc($cve_id)->json()['items'] ?? [];
-            if($cve['poc'] !== []){
-                $cve['poc'] = collect($cve['poc'])->map(function($i){
-                    $poc = [];
-                    $poc['title'] = $i['title'];
-                    $poc['description'] = $i['snippet'];
-                    $poc['link'] = $i['link'];
-                    return $poc;
-                });
-            }
+            $cve['poc'] = $this->getPoc($cve_id);
 
             $cve['cpe'] = collect($cve_details['configurations'])->map(function($i){
                 return collect($i['nodes'])->map(function($j){
@@ -187,7 +183,8 @@ class DataController extends Controller
         return response()->json($cve);
     }
 
-    public function getPoc($cve_id) {
+    public function getPocByApi($cve_id): \Illuminate\Http\Client\Response
+    {
         $api_key = Env::get('GOOGLE_API_KEY');
         $search_engine_id = Env::get('SEARCH_ENGINE_ID');
         $search_query = 'intitle:"'.$cve_id.'" poc';
@@ -199,26 +196,26 @@ class DataController extends Controller
             'exactTerms' => $cve_id,
             'num' => 5,
         ]);
-
-        // MUST BE STORED IN DATABASE
-//        1. LOOK FOR DATA IN DATABASE
-//        2. IF EMPTY, USER CAN UPDATE DATABASE WITH SCRIPT (IN BACKEND)
-//          script must crawl every cve to ever exist (avoid)
-//        instead,
-//          first check if db is empty,
-//          then fire API and insert to DB,
-//          then pull DB data
-        // script crawling nya pake gak ya? oh untuk CWE aja kali
-//            pake script CWE yg pny gab, adapt to laravel
-
     }
 
-    public function getCweDetails() {
-
-    }
-
-    public function getCpeDetails($cpe_uuid) {
-
+    public function getPoc($cve_id): array
+    {
+        $pocExists = Poc::where('cve_id', '=', $cve_id)->first();
+        if(!isset($pocExists)) {
+            $request = $this->getPocByApi($cve_id)->json()['items'] ?? [];
+            if($request === []) return [];
+            foreach($request as $poc_entry){
+                $poc = new Poc();
+                $poc->cve_id = $cve_id;
+                $poc->title = $poc_entry['title'];
+                $poc->description = $poc_entry['snippet'];
+                $poc->link = $poc_entry['link'];
+                DB::transaction(function() use ($poc){
+                    $poc->save();
+                });
+            }
+        }
+        return Poc::where('cve_id', '=', $cve_id)->get()->toArray() ?? [];
     }
 
     public function updateDatabase() {
@@ -240,23 +237,45 @@ class DataController extends Controller
             $page++;
         }
 
-        if($cwe_data === []) return abort(response()->json([
-            'message' => 'Failed to retrieve CWE data. Database is unchanged.'
-        ], $response->status()));
+        if($cwe_data === []){
+            $cwe_status = "Failed to retrieve CWE data, database is unchanged.";
+        }
+        else {
+            $cwe_status = "CWE database updated.";
+            DB::transaction(function() use ($cwe_data){
+                // Truncate (delete all entries from cwe table) before inserting new data
+                Cwe::truncate();
+                foreach($cwe_data as $cwe_entry){
+                    $cwe = new Cwe();
+                    $cwe->id = $cwe_entry['id'];
+                    $cwe->name = $cwe_entry['name'];
+                    $cwe->description = $cwe_entry['description'];
+                    $cwe->save();
+                }
+            });
+        }
 
-        // Truncate (delete all entries from cwe table)
-        Cwe::truncate();
+        # POC Database
+        $cve_ids = collect(Poc::select('cve_id')->get()->toArray())
+            ->flatten()->unique()->values()->all();
 
-        foreach($cwe_data as $cwe_entry){
-            $cwe = new Cwe();
-            $cwe->id = $cwe_entry['id'];
-            $cwe->name = $cwe_entry['name'];
-            $cwe->description = $cwe_entry['description'];
-            $cwe->save();
+        $poc_data = [];
+        DB::transaction(function() use ($cve_ids, &$poc_data){
+            Poc::truncate();
+            foreach($cve_ids as $cve_id){
+                $poc_data = $this->getPoc($cve_id);
+            }
+        });
+
+        if($poc_data === []) {
+            $poc_status = "No POC data retrieved, database is unchanged.";
+        }
+        else {
+            $poc_status = "POC database updated.";
         }
 
         return response()->json([
-            'message' => 'Database Updated.'
+            'message' => $cwe_status.' '.$poc_status
         ]);
     }
 }

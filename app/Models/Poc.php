@@ -5,15 +5,16 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Cwe extends Model
+class Poc extends Model
 {
     use HasFactory;
 
-    protected $table = 'cwe';
+    protected $table = 'poc';
     protected $fillable = [
-        'id',
-        'name',
-        'description'
+        'cve_id',
+        'title',
+        'description',
+        'link'
     ];
     public $timestamps = false;
 }

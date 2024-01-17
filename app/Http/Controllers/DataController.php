@@ -164,8 +164,8 @@ class DataController extends Controller
                 $cwe['cweid'] = collect($j['description'] ?? [])->filter(function($j){
                     return $j['lang'] == 'en';
                 })->first()['value'];
-                $cwe['name'] = Cwe::select('name')->where('id', $cwe['cweid'])->get()->toArray()['name'] ?? 'Not found in database. Please update database.';
-                $cwe['description'] = Cwe::select('description')->where('id', $cwe['cweid'])->get()->toArray()['description'] ?? 'Not found in database. Please update database.';
+                $cwe['name'] = Cwe::select('name')->where('id', $cwe['cweid'])->get()->toArray()[0]['name'] ?? 'Not found in database. Please update database.';
+                $cwe['description'] = Cwe::select('description')->where('id', $cwe['cweid'])->get()->toArray()[0]['description'] ?? 'Not found in database. Please update database.';
                 $cwe['source'] = $j['source'];
                 $cwe['type'] = $j['type'];
                 return $cwe;
@@ -245,7 +245,6 @@ class DataController extends Controller
             $cwe_status = "Failed to retrieve CWE data, database is unchanged.";
         }
         else {
-            $cwe_status = "CWE database updated.";
             DB::transaction(function() use ($cwe_data){
                 // Truncate (delete all entries from cwe table) before inserting new data
                 Cwe::truncate();
@@ -257,6 +256,7 @@ class DataController extends Controller
                     $cwe->save();
                 }
             });
+            $cwe_status = "CWE database updated.";
         }
 
         # POC Database

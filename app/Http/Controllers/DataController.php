@@ -13,6 +13,8 @@ use function PHPUnit\Framework\isEmpty;
 
 class DataController extends Controller
 {
+    # CVE
+
     public function getCveList(Request $request): \Illuminate\Http\JsonResponse
     {
         /*
@@ -90,19 +92,19 @@ class DataController extends Controller
             ], 500));
         }
 
-        $cve_list = collect($response['vulnerabilities'])->map(function($i){
+        $cve_list = collect($response['vulnerabilities'] ?? [])->map(function($i){
             return $i['cve'];
         })->map(function($i){
             $cve = [];
             $cve['cveid'] = $i['id'];
-            $cve['description'] = collect($i['descriptions'])->filter(function($j){
+            $cve['description'] = collect($i['descriptions'] ?? [])->filter(function($j){
                 return $j['lang'] == 'en';
             })->first()['value'];
             $pub_date = new \DateTime($i['published']);
             $cve['publishedat'] = $pub_date->format('d-m-Y');
             $upd_date = new \DateTime($i['lastModified']);
             $cve['updatedat'] = $upd_date->format('d-m-Y');
-            $cve['cvssscore'] = collect($i['metrics'])->collapse()->map(function($j){
+            $cve['cvssscore'] = collect($i['metrics'] ?? [])->collapse()->map(function($j){
                 $cvss = $j['cvssData'];
                 $cvss['source'] = $j['source'];
                 $cvss['type'] = $j['type'];
@@ -141,14 +143,14 @@ class DataController extends Controller
         if(isset($cve_details['vulnerabilities'][0]['cve'])) {
             $cve_details = $cve_details['vulnerabilities'][0]['cve'];
             $cve['cveid'] = $cve_details['id'];
-            $cve['description'] = collect($cve_details['descriptions'])->filter(function ($j) {
+            $cve['description'] = collect($cve_details['descriptions'] ?? [])->filter(function ($j) {
                 return $j['lang'] == 'en';
             })->first()['value'];
             $pub_date = new \DateTime($cve_details['published']);
             $cve['publishedat'] = $pub_date->format('d-m-Y');
             $upd_date = new \DateTime($cve_details['lastModified']);
             $cve['updatedat'] = $upd_date->format('d-m-Y');
-            $cve['cvssscore'] = collect($cve_details['metrics'])->collapse()->map(function ($j) {
+            $cve['cvssscore'] = collect($cve_details['metrics'] ?? [])->collapse()->map(function ($j) {
                 $cvss = $j['cvssData'];
                 $cvss['source'] = $j['source'];
                 $cvss['type'] = $j['type'];
@@ -157,13 +159,15 @@ class DataController extends Controller
                 return $cvss;
             })->all();
 
-            $cve['cwe'] = collect($cve_details['weaknesses'])->map(function($j){
+            $cve['cwe'] = collect($cve_details['weaknesses'] ?? [])->map(function($j){
                 $cwe = [];
-                $cwe['cweid'] = collect($j['description'])->filter(function($j){
+                $cwe['cweid'] = collect($j['description'] ?? [])->filter(function($j){
                     return $j['lang'] == 'en';
                 })->first()['value'];
-                $cwe['name'] = Cwe::select('name')->where('id', $cwe['cweid'])->first()->toArray()['name'] ?? '';
-                $cwe['description'] = Cwe::select('description')->where('id', $cwe['cweid'])->first()->toArray()['description'] ?? '';
+                $cwe_name_query = Cwe::select('name')->where('id', $cwe['cweid'])->first();
+                $cwe['name'] = $cwe_name_query ? $cwe_name_query->toArray()['name'] : 'not found in database';
+                $cwe_description_query = Cwe::select('description')->where('id', $cwe['cweid'])->first();
+                $cwe['description'] = $cwe_description_query ? $cwe_description_query->toArray()['description'] : 'not found in database';
                 $cwe['source'] = $j['source'];
                 $cwe['type'] = $j['type'];
                 return $cwe;
@@ -171,7 +175,7 @@ class DataController extends Controller
 
             $cve['poc'] = $this->getPoc($cve_id);
 
-            $cve['cpe'] = collect($cve_details['configurations'])->map(function($i){
+            $cve['cpe'] = collect($cve_details['configurations'] ?? [])->map(function($i){
                 return collect($i['nodes'])->map(function($j){
                     return $j['cpeMatch'];
                 })->flatten(1);
@@ -182,6 +186,8 @@ class DataController extends Controller
 
         return response()->json($cve);
     }
+
+    # POC & CWE
 
     public function getPocByApi($cve_id): \Illuminate\Http\Client\Response
     {

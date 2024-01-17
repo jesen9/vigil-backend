@@ -164,10 +164,8 @@ class DataController extends Controller
                 $cwe['cweid'] = collect($j['description'] ?? [])->filter(function($j){
                     return $j['lang'] == 'en';
                 })->first()['value'];
-                $cwe_name_query = Cwe::select('name')->where('id', $cwe['cweid'])->first();
-                $cwe['name'] = $cwe_name_query ? $cwe_name_query->toArray()['name'] : 'not found in database';
-                $cwe_description_query = Cwe::select('description')->where('id', $cwe['cweid'])->first();
-                $cwe['description'] = $cwe_description_query ? $cwe_description_query->toArray()['description'] : 'not found in database';
+                $cwe['name'] = Cwe::select('name')->where('id', $cwe['cweid'])->get()->toArray()['name'] ?? 'Not found in database. Please update database.';
+                $cwe['description'] = Cwe::select('description')->where('id', $cwe['cweid'])->get()->toArray()['description'] ?? 'Not found in database. Please update database.';
                 $cwe['source'] = $j['source'];
                 $cwe['type'] = $j['type'];
                 return $cwe;

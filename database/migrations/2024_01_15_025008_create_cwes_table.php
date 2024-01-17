@@ -17,7 +17,7 @@ class CreateCwesTable extends Migration
             $table->string('id')->primary();
             $table->string('name')->nullable();
             $table->text('description')->nullable();
-            $table->timestamp('created_at');
+            $table->timestamp('created_at')->useCurrent();
         });
     }
 

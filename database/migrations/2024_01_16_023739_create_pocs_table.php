@@ -19,7 +19,7 @@ class CreatePocsTable extends Migration
             $table->string('title');
             $table->text('description');
             $table->string('link');
-            $table->timestamp('created_at');
+            $table->timestamp('created_at')->useCurrent();
         });
     }
 

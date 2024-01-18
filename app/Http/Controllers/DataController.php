@@ -323,7 +323,19 @@ class DataController extends Controller
         else return Notes::all();
     }
 
-    public function deleteNotes(Request $request, $notes_id) {
-//        Notes::delete();
+    public function deleteNotes($id) {
+        $notesExists = Notes::where('id', $id)->first();
+//        dd($notesExists);
+        if(isset($notesExists)) {
+            Notes::where('id', (int)$id)->delete();
+            return response()->json([
+                'message' => 'Notes successfully deleted'
+            ]);
+        }
+        else {
+            return abort(response()->json([
+                'message' => 'No such notes with specified ID found'
+            ], 404));
+        }
     }
 }

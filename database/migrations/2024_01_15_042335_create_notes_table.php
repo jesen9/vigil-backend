@@ -17,7 +17,7 @@ class CreateNotesTable extends Migration
             $table->id();
             $table->string('cve_id');
             $table->mediumText('notes');
-            $table->timestamp('created_at');
+            $table->timestamps();
         });
     }
 

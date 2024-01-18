@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DataController;
+use App\Http\Controllers\NotesController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -18,6 +19,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/getcvelist', [DataController::class, 'getCveList']);
 Route::get('/getcvedetails', [DataController::class, 'getCveDetails']);
 Route::get('/updatedatabase', [DataController::class, 'updateDatabase']);
+Route::get('/getnoteslist', [NotesController::class, 'index']);
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();

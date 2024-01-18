@@ -208,16 +208,16 @@ class DataController extends Controller
         if(!isset($pocExists)) {
             $request = $this->getPocByApi($cve_id)->json()['items'] ?? [];
             if($request === []) return [];
-            foreach($request as $poc_entry){
-                $poc = new Poc();
-                $poc->cve_id = $cve_id;
-                $poc->title = $poc_entry['title'];
-                $poc->description = $poc_entry['snippet'];
-                $poc->link = $poc_entry['link'];
-                DB::transaction(function() use ($poc){
+            DB::transaction(function() use ($request, $cve_id){
+                foreach($request as $poc_entry){
+                    $poc = new Poc();
+                    $poc->cve_id = $cve_id;
+                    $poc->title = $poc_entry['title'];
+                    $poc->description = $poc_entry['snippet'];
+                    $poc->link = $poc_entry['link'];
                     $poc->save();
-                });
-            }
+                }
+            });
         }
         return Poc::where('cve_id', '=', $cve_id)->get()->toArray() ?? [];
     }
@@ -242,7 +242,8 @@ class DataController extends Controller
         }
 
         if($cwe_data === []){
-            $cwe_status = "Failed to retrieve CWE data, database is unchanged.";
+            if($response->json()['message'] == '250 per 1 hour') $cwe_status = "Request quota exceeded, failed to retrieve CWE data. Database is unchanged";
+            else $cwe_status = "Failed to retrieve CWE data, database is unchanged.";
         }
         else {
             DB::transaction(function() use ($cwe_data){
@@ -265,9 +266,16 @@ class DataController extends Controller
 
         $poc_data = [];
         DB::transaction(function() use ($cve_ids, &$poc_data){
-            Poc::truncate();
             foreach($cve_ids as $cve_id){
-                $poc_data = $this->getPoc($cve_id);
+                $request = $this->getPocByApi($cve_id)->json()['items'] ?? [];
+                if($request === []) return [];
+                foreach($request as $poc_entry){
+                    $poc = Poc::firstOrCreate(
+                        ['cve_id' => $cve_id, 'link' => $poc_entry['link']],
+                        ['title' => $poc_entry['title'], 'description' => $poc_entry['snippet']]
+                    )->get()->toArray();
+                    $poc_data = array_merge($poc_data, $poc);
+                }
             }
         });
 

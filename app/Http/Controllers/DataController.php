@@ -316,7 +316,10 @@ class DataController extends Controller
 
     public function getNotes(Request $request) {
         $keyword = $request->query->all()['keyword'] ?? false;
-        if($keyword) return Notes::where('cve_id', 'like', '%'.$keyword.'%')->orWhere('notes', 'like', '%'.$keyword.'%')->get();
+        $notes_id = $request->query->all()['id'] ?? false;
+
+        if($notes_id) return Notes::where('id', $notes_id)->get();
+        else if($keyword) return Notes::where('cve_id', 'like', '%'.$keyword.'%')->orWhere('notes', 'like', '%'.$keyword.'%')->get();
         else return Notes::all();
     }
 

@@ -16,10 +16,12 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::get('/getcvelist', [DataController::class, 'getCveList']);
-Route::get('/getcvedetails', [DataController::class, 'getCveDetails']);
-Route::get('/updatedatabase', [DataController::class, 'updateDatabase']);
-Route::get('/getnoteslist', [NotesController::class, 'index']);
+Route::get('/get-cve-list', [DataController::class, 'getCveList']);
+Route::get('/get-cve-details', [DataController::class, 'getCveDetails']);
+Route::get('/update-database', [DataController::class, 'updateDatabase']);
+Route::post('/insert-notes', [DataController::class, 'insertNotes']);
+Route::get('/get-notes', [DataController::class, 'getNotes']);
+Route::delete('/delete-notes/{notes-id}', [DataController::class, 'deleteNotes']);
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();

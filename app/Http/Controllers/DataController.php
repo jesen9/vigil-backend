@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cwe;
+use App\Models\Notes;
 use App\Models\Poc;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Http\Request;
@@ -289,5 +290,37 @@ class DataController extends Controller
         return response()->json([
             'message' => $cwe_status.' '.$poc_status
         ]);
+    }
+
+    # Notes
+
+    public function insertNotes(Request $request) {
+        $cve_id = $request->all()['cveId'] ?? false;
+        $contents = $request->all()['notes'] ?? '';
+
+        if(!$cve_id){
+            return abort(response()->json([
+                'message' => 'CVE ID not specified in request body'
+            ], 400));
+        }
+
+        Notes::updateOrCreate(
+            ['cve_id' => $cve_id],
+            ['notes' => $contents]
+        );
+
+        return response()->json([
+            'status' => 'Insert notes success!'
+        ]);
+    }
+
+    public function getNotes(Request $request) {
+        $keyword = $request->query->all()['keyword'] ?? false;
+        if($keyword) return Notes::where('cve_id', 'like', '%'.$keyword.'%')->orWhere('notes', 'like', '%'.$keyword.'%')->get();
+        else return Notes::all();
+    }
+
+    public function deleteNotes(Request $request, $notes_id) {
+//        Notes::delete();
     }
 }

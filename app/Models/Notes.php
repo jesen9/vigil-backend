@@ -14,5 +14,4 @@ class Notes extends Model
         'cve_id',
         'notes',
     ];
-    public $timestamps = false;
 }

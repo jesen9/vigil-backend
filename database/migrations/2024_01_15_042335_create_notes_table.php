@@ -16,7 +16,7 @@ class CreateNotesTable extends Migration
         Schema::create('notes', function (Blueprint $table) {
             $table->id();
             $table->string('cve_id');
-            $table->mediumText('notes');
+            $table->mediumText('notes')->nullable();
             $table->timestamps();
         });
     }

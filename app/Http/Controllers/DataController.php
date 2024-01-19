@@ -209,7 +209,7 @@ class DataController extends Controller
         if(!isset($pocExists)) {
             $request = $this->getPocByApi($cve_id)->json()['items'] ?? [];
             if($request === []) return [];
-            DB::transaction(function() use ($request, $cve_id){
+//            DB::transaction(function() use ($request, $cve_id){
                 foreach($request as $poc_entry){
                     $poc = new Poc();
                     $poc->cve_id = $cve_id;
@@ -218,7 +218,7 @@ class DataController extends Controller
                     $poc->link = $poc_entry['link'];
                     $poc->save();
                 }
-            });
+//            });
         }
         return Poc::where('cve_id', '=', $cve_id)->get()->toArray() ?? [];
     }
@@ -247,7 +247,7 @@ class DataController extends Controller
             else $cwe_status = "Failed to retrieve CWE data, database is unchanged.";
         }
         else {
-            DB::transaction(function() use ($cwe_data){
+//            DB::transaction(function() use ($cwe_data){
                 // Truncate (delete all entries from cwe table) before inserting new data
                 Cwe::truncate();
                 foreach($cwe_data as $cwe_entry){
@@ -257,7 +257,7 @@ class DataController extends Controller
                     $cwe->description = $cwe_entry['description'];
                     $cwe->save();
                 }
-            });
+//            });
             $cwe_status = "CWE database updated.";
         }
 
@@ -266,7 +266,7 @@ class DataController extends Controller
             ->flatten()->unique()->values()->all();
 
         $poc_data = [];
-        DB::transaction(function() use ($cve_ids, &$poc_data){
+//        DB::transaction(function() use ($cve_ids, &$poc_data){
             foreach($cve_ids as $cve_id){
                 $request = $this->getPocByApi($cve_id)->json()['items'] ?? [];
                 if($request === []) return [];
@@ -278,7 +278,7 @@ class DataController extends Controller
                     $poc_data = array_merge($poc_data, $poc);
                 }
             }
-        });
+//        });
 
         if($poc_data === []) {
             $poc_status = "No POC data retrieved, database is unchanged.";

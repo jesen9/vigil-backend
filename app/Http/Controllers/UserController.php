@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 
 class UserController extends Controller
@@ -58,23 +60,27 @@ class UserController extends Controller
             ]);
         }else{
             $user = Auth::user();
-//            $userRole = $user->role()->first();
-
-//            if ($userRole) {
-//                $this->scope = $userRole->role;
-//            }
-
-//            dd('$user', $user, '$userRole', $userRole, '$userRole->role', $userRole->role, '$this', $this, '$this->scope', $this->scope);
-
-            $token = $user->createToken($user->username.'-'.now());
-//            dd('$token', $token);
+            $token = $user->createToken($user->username.'-'.now(), ['*'], now()->addMinute());
             return response()->json([
 //                'token' => Auth::user()->createToken('testToken')->accessToken
-                'token' => $token->accessToken
+                'user_id' => $user->id,
+                'username' => $user->username,
+                'token' => $token->accessToken,
+                'plain_text' => $token->plainTextToken
             ]);
         }
 
     }
+
+    public function logout()
+    {
+        $user = Auth::user();
+        $user->tokens()->delete();
+        return response()->json([
+            'status' => 'User logged out'
+        ]);
+    }
+
     /**
      * Display a listing of the resource.
      *
@@ -99,11 +105,46 @@ class UserController extends Controller
      * Store a newly created resource in storage.
      *
      * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
+     * @return \Illuminate\Http\JsonResponse
      */
     public function store(Request $request)
     {
-        //
+        $validation = [
+            'username' => 'required',
+            'email' => 'required',
+            'password' => 'required',
+        ];
+
+        $validator = Validator::make($request->all(), $validation);
+
+        if($validator->fails()) {
+            return response()->json([
+                'message' => 'All parameters must be filled!'
+            ]);
+        }
+
+        if (User::where('email', '=', $request->email)->exists()) {
+            return response()->json([
+                'message' => 'Email is already in use!'
+            ]);
+        }
+        else if (User::where('username', '=', $request->username)->exists()) {
+            return response()->json([
+                'message' => 'Username is already in use!'
+            ]);
+        }
+
+        $user = new User();
+        $user->username = $request->username;
+        $user->email = $request->email;
+//        $user->email_verified_at = $request->email_verified_at;
+        $user->password = Hash::make($request->password);
+//        $user->remember_token = $request->remember_token;
+        $user->save();
+
+        return response()->json([
+            'message' => 'New user created!'
+        ]);
     }
 
     /**

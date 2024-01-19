@@ -17,18 +17,20 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+Route::post('/register', [UserController::class, 'store']);
 Route::post('/login', [UserController::class, 'login']);
+
 Route::get('/get-cve-list', [DataController::class, 'getCveList']);
 Route::get('/get-cve-details', [DataController::class, 'getCveDetails']);
 Route::get('/update-database', [DataController::class, 'updateDatabase']);
 
-
-Route::middleware(['auth:api'])->group(function(){
+Route::middleware(['auth:sanctum'])->group(function(){
     Route::post('/insert-notes', [DataController::class, 'insertNotes']);
     Route::get('/get-notes', [DataController::class, 'getNotes']);
     Route::delete('/delete-notes/{id}', [DataController::class, 'deleteNotes']);
+    Route::post('/logout', [UserController::class, 'logout']);
 });
 
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
-});
+//Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
+//    return $request->user();
+//});

@@ -61,9 +61,9 @@ class UserController extends Controller
             $user = Auth::user();
             $token = $user->createToken($user->username.'-'.now());
             return response()->json([
+                'message' => 'Login Success',
                 'user_id' => $user->id,
                 'username' => $user->username,
-                'token' => $token->accessToken,
                 'plain_text' => explode("|",$token->plainTextToken)[1]
             ]);
         }

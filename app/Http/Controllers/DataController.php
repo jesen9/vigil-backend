@@ -318,12 +318,24 @@ class DataController extends Controller
     }
 
     public function getNotes(Request $request) {
+        $user_id = Auth::user()->id;
         $keyword = $request->query->all()['keyword'] ?? false;
         $notes_id = $request->query->all()['id'] ?? false;
 
-        if($notes_id) return Notes::where('id', $notes_id)->get();
-        else if($keyword) return Notes::where('cve_id', 'like', '%'.$keyword.'%')->orWhere('notes', 'like', '%'.$keyword.'%')->get();
-        else return Notes::all();
+        if($notes_id) {
+            return Notes::where('user_id', '=', $user_id)->where(function($query) use ($notes_id)
+            {
+                $query->where('id', '=', $notes_id);
+            })->get();
+        }
+        else if($keyword) {
+            return Notes::where('user_id', '=', $user_id)->where(function($query) use ($keyword)
+            {
+                $query->where('cve_id', 'like', '%'.$keyword.'%')
+                    ->orWhere('notes', 'like', '%'.$keyword.'%');
+            })->get();
+        }
+        else return Notes::where('user_id', '=', $user_id)->get();
     }
 
     public function deleteNotes($id) {

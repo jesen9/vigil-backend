@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\Cwe;
 use App\Models\Notes;
 use App\Models\Poc;
+use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Env;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use function PHPUnit\Framework\isEmpty;
@@ -295,6 +297,7 @@ class DataController extends Controller
     # Notes
 
     public function insertNotes(Request $request) {
+        $user_id = Auth::user()->id;
         $cve_id = $request->all()['cveId'] ?? false;
         $contents = $request->all()['notes'] ?? '';
 
@@ -305,7 +308,7 @@ class DataController extends Controller
         }
 
         Notes::updateOrCreate(
-            ['cve_id' => $cve_id],
+            ['cve_id' => $cve_id, 'user_id' => $user_id],
             ['notes' => $contents]
         );
 
@@ -324,9 +327,16 @@ class DataController extends Controller
     }
 
     public function deleteNotes($id) {
+        $user_id = Auth::user()->id;
         $notesExists = Notes::where('id', $id)->first();
-//        dd($notesExists);
+
         if(isset($notesExists)) {
+            $notes_user_id = Notes::where('id', $id)->first()->toArray()['user_id'];
+
+            if($notes_user_id !== $user_id) return abort(response()->json([
+                'message' => 'Forbidden'
+            ], 403));
+
             Notes::where('id', (int)$id)->delete();
             return response()->json([
                 'message' => 'Notes successfully deleted'

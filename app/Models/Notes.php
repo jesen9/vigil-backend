@@ -12,6 +12,12 @@ class Notes extends Model
     protected $table = 'notes';
     protected $fillable = [
         'cve_id',
+        'user_id',
         'notes',
     ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }

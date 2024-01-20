@@ -326,7 +326,7 @@ class DataController extends Controller
             return Notes::where('user_id', '=', $user_id)->where(function($query) use ($notes_id)
             {
                 $query->where('id', '=', $notes_id);
-            })->get();
+            })->first();
         }
         else if($keyword) {
             return Notes::where('user_id', '=', $user_id)->where(function($query) use ($keyword)

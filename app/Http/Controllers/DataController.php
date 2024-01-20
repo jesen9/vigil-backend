@@ -289,12 +289,12 @@ class DataController extends Controller
     public function getNotes(Request $request) {
         $user_id = Auth::user()->id;
         $keyword = $request->query->all()['keyword'] ?? false;
-        $notes_id = $request->query->all()['id'] ?? false;
+        $cve_id = $request->query->all()['cve_id'] ?? false;
 
-        if($notes_id) {
-            return Notes::where('user_id', '=', $user_id)->where(function($query) use ($notes_id)
+        if($cve_id) {
+            return Notes::where('user_id', '=', $user_id)->where(function($query) use ($cve_id)
             {
-                $query->where('id', '=', $notes_id);
+                $query->where('cve_id', '=', $cve_id);
             })->first();
         }
         else if($keyword) {

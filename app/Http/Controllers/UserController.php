@@ -53,7 +53,6 @@ class UserController extends Controller
             ];
         }
 
-
         if(!Auth::attempt($credentials)){
             return response()->json([
                 'status' => 'Login Failed'
@@ -62,11 +61,10 @@ class UserController extends Controller
             $user = Auth::user();
             $token = $user->createToken($user->username.'-'.now());
             return response()->json([
-//                'token' => Auth::user()->createToken('testToken')->accessToken
                 'user_id' => $user->id,
                 'username' => $user->username,
                 'token' => $token->accessToken,
-                'plain_text' => $token->plainTextToken
+                'plain_text' => explode("|",$token->plainTextToken)[1]
             ]);
         }
 

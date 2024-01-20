@@ -60,7 +60,7 @@ class UserController extends Controller
             ]);
         }else{
             $user = Auth::user();
-            $token = $user->createToken($user->username.'-'.now(), ['*'], now()->addMinute());
+            $token = $user->createToken($user->username.'-'.now());
             return response()->json([
 //                'token' => Auth::user()->createToken('testToken')->accessToken
                 'user_id' => $user->id,

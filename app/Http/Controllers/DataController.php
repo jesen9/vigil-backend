@@ -6,8 +6,10 @@ use App\Models\Cwe;
 use App\Models\Notes;
 use App\Models\Poc;
 use App\Models\User;
+use Carbon\Carbon;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Env;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -22,7 +24,6 @@ class DataController extends Controller
     {
         $results_per_page = $request->query->all()['resultsPerPage'] ?? false;
         $start_index = $request->query->all()['startIndex'] ?? false;
-        $is_updated = $request->query->all()['isUpdated'] ?? false;
 
         if (!$results_per_page || $start_index === false) {
             return abort(response()->json([
@@ -30,10 +31,20 @@ class DataController extends Controller
             ], 400));
         }
 
+        $is_updated = isset($request->query->all()['isUpdated']);
+
+        $req_query = collect($request->query->all())->filter(function($i, $key){
+            return $key !== 'isUpdated';
+        })->all();
+
+        $query_string = Arr::query($req_query);
+
+//        $rq = $request->getRequestUri();
+//        dd($rq, parse_url($rq));
+
         $results_per_page = filter_var($results_per_page, FILTER_SANITIZE_NUMBER_INT);
         $start_index = filter_var($start_index, FILTER_SANITIZE_NUMBER_INT);
 
-        $query_string = parse_url($request->getRequestUri())['query'] ?? '';
         if($is_updated){
             $query_string = str_replace("&isUpdated=true", "", $query_string);
         }
@@ -77,13 +88,16 @@ class DataController extends Controller
         $cve_list = collect($response['vulnerabilities'] ?? [])->map(function($i){
             return $i['cve'];
         });
-        // must fix total results after filtering (for pagination)
         if($is_updated){
             $cve_list = $cve_list->filter(function($i){
-                dd($i);
-                return $i['vulnStatus'] === "Modified";
+                $pub_date = Carbon::parse($i['published']);
+                $mod_date = Carbon::parse($i['lastModified']);
+                return $mod_date->gt($pub_date);
             });
+            // some pages may have less than 20 results
+//            $total_results = ;
         }
+
         $cve_list = $cve_list->map(function($i){
             $cve = [];
             $cve['cveid'] = $i['id'];

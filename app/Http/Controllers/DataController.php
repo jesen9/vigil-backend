@@ -35,6 +35,12 @@ class DataController extends Controller
 
         $req_query = collect($request->query->all())->filter(function($i, $key){
             return $key !== 'isUpdated';
+        })->map(function($i, $key){
+            // Lowercase cpe string query and replace white space with underscore
+            if($key === 'virtualMatchString'){
+                return str_replace(" ", "_", strtolower($i));
+            }
+            return $i;
         })->all();
 
         $query_string = Arr::query($req_query);

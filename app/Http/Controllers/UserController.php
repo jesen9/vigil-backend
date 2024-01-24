@@ -109,9 +109,7 @@ class UserController extends Controller
         $user = new User();
         $user->username = $request->username;
         $user->email = $request->email;
-//        $user->email_verified_at = $request->email_verified_at;
         $user->password = Hash::make($request->password);
-//        $user->remember_token = $request->remember_token;
         $user->save();
 
         return response()->json([

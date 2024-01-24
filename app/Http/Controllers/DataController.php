@@ -22,6 +22,7 @@ class DataController extends Controller
     {
         $results_per_page = $request->query->all()['resultsPerPage'] ?? false;
         $start_index = $request->query->all()['startIndex'] ?? false;
+        $is_updated = $request->query->all()['isUpdated'] ?? false;
 
         if (!$results_per_page || $start_index === false) {
             return abort(response()->json([
@@ -33,6 +34,9 @@ class DataController extends Controller
         $start_index = filter_var($start_index, FILTER_SANITIZE_NUMBER_INT);
 
         $query_string = parse_url($request->getRequestUri())['query'] ?? '';
+        if($is_updated){
+            $query_string = str_replace("&isUpdated=true", "", $query_string);
+        }
         $request_url = Env::get('NVD_API_URL')."?".$query_string;
 
         # PAGINATION LOGIC TO SORT BY NEWEST
@@ -72,7 +76,15 @@ class DataController extends Controller
 
         $cve_list = collect($response['vulnerabilities'] ?? [])->map(function($i){
             return $i['cve'];
-        })->map(function($i){
+        });
+        // must fix total results after filtering (for pagination)
+        if($is_updated){
+            $cve_list = $cve_list->filter(function($i){
+                dd($i);
+                return $i['vulnStatus'] === "Modified";
+            });
+        }
+        $cve_list = $cve_list->map(function($i){
             $cve = [];
             $cve['cveid'] = $i['id'];
             $cve['description'] = collect($i['descriptions'] ?? [])->filter(function($j){
@@ -94,8 +106,9 @@ class DataController extends Controller
         })->sortByDesc(function($i){
             return strtotime($i['publishedat']);
         })
-        ->values()
-        ->all();
+        ->values();
+
+        $cve_list = $cve_list->all();
 
         return response()->json([
             'resultsPerPage' => $results_per_page,

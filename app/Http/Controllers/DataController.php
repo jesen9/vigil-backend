@@ -228,7 +228,11 @@ class DataController extends Controller
                 $poc->save();
             }
         }
-        return Poc::where('cve_id', '=', $cve_id)->get()->toArray() ?? [];
+
+        return collect(Poc::where('cve_id', '=', $cve_id)->get()->toArray() ?? [])->map(function($i){
+            $i['created_at'] = Carbon::parse($i['created_at'])->format('d M Y');
+            return $i;
+        })->all();
     }
 
     public function updateDatabase() {

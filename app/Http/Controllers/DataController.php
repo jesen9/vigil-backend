@@ -332,7 +332,12 @@ class DataController extends Controller
             $notes = Notes::where('user_id', '=', $user_id)->where(function($query) use ($cve_id)
             {
                 $query->where('cve_id', '=', $cve_id);
-            })->first();
+            })->first()->toArray();
+            if(isset($notes)) {
+                $notes['created_at'] = Carbon::parse($notes['created_at'])->format('d M Y');
+                $notes['updated_at'] = Carbon::parse($notes['updated_at'])->format('d M Y');
+            }
+            return $notes;
         }
         else if($keyword) {
             $notes = Notes::where('user_id', '=', $user_id)->where(function($query) use ($keyword)

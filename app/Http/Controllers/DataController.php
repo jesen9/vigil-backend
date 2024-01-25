@@ -325,19 +325,25 @@ class DataController extends Controller
         $cve_id = $request->query->all()['cve_id'] ?? false;
 
         if($cve_id) {
-            return Notes::where('user_id', '=', $user_id)->where(function($query) use ($cve_id)
+            $notes = Notes::where('user_id', '=', $user_id)->where(function($query) use ($cve_id)
             {
                 $query->where('cve_id', '=', $cve_id);
             })->first();
         }
         else if($keyword) {
-            return Notes::where('user_id', '=', $user_id)->where(function($query) use ($keyword)
+            $notes = Notes::where('user_id', '=', $user_id)->where(function($query) use ($keyword)
             {
                 $query->where('cve_id', 'like', '%'.$keyword.'%')
                     ->orWhere('notes', 'like', '%'.$keyword.'%');
             })->get();
         }
-        else return Notes::where('user_id', '=', $user_id)->get();
+        else $notes = Notes::where('user_id', '=', $user_id)->get();
+
+        return collect($notes->toArray())->map(function($i){
+            $i['created_at'] = Carbon::parse($i['created_at'])->format('d M Y');
+            $i['updated_at'] = Carbon::parse($i['updated_at'])->format('d M Y');
+            return $i;
+        });
     }
 
     public function deleteNotes($id) {
